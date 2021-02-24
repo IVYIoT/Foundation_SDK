@@ -1,0 +1,2 @@
+For the iOS sample:
+This sample don't include SDK files in project, please copy header file and library to the IvySdk folder and add them to project.
