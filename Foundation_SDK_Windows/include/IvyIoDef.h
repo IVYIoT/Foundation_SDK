@@ -55,6 +55,7 @@ typedef enum {
 	IVYIO_DEV_BATTERY_CAMERA = 1, 
 	IVYIO_DEV_NVR            = 2, 
 	IVYIO_DEV_BASE_STATION   = 3, 
+	IVYIO_DEV_TWO_WAY_VIDEO_CAMERA = 6,
 	IVYIO_DEV_OTHER          = 100,
 
 	// for compatible with old fos dev
@@ -111,7 +112,8 @@ typedef enum
 	IVYIO_RESULT_NO_PERMITTION,
 	IVYIO_RESULT_DOWNLOADING,
 	IVYIO_RESULT_RECORD_NOT_EXIST,
-	IVYIO_RESULT_RECORD_OPEN_FAIL
+	IVYIO_RESULT_RECORD_OPEN_FAIL,
+	IVYIO_RESULT_FAIL_BECAUSE_SMART_AI_ENABLE
 }IVYIO_RESULT;
 
 typedef enum
@@ -121,7 +123,8 @@ typedef enum
 	IVYIO_CMD_EXEC_CODE_ERR_ARGS = -2,
 	IVYIO_CMD_EXEC_CODE_CHANNEL_OVERSTEP = -3,
 	IVYIO_CMD_EXEC_CODE_UNSUPPORT = -9,
-	IVYIO_CMD_EXEC_CODE_FORMAT_UNSUPPORT = -15
+	IVYIO_CMD_EXEC_CODE_FORMAT_UNSUPPORT = -15,
+	IVYIO_CMD_EXEC_CODE_FAIL_BECAUSE_SMART_AI_ENABLE = 1 // Define by Foscam
 }IVYIO_COMMAND_RETRUN_CODE;
 
 // Record event
@@ -141,6 +144,9 @@ typedef enum
 	PLATFORM_AMBA      = 1, 
 	PLATFORM_MSTAR      = 2, 
 	PLATFORM_INGENIC   = 3, 
+	PLATFORM_SSC33X	= 4,
+	PLATFORM_SSC33X_IVY = 5,
+	PLATFORM_SSC30KD	= 6,
 	PLATFORM_OTHER      = 100 
 }IVYIO_PLATFORM_TYPE;
 
@@ -171,7 +177,9 @@ typedef enum
 typedef enum
 {
 	IVYIO_STREAM_VIDEO = 0,
-	IVYIO_STREAM_AUDIO = 1
+	IVYIO_STREAM_AUDIO = 1,
+	IVYIO_STREAM_SPLIT_VIDEO_V2H = 2,
+	IVYIO_STREAM_SPLIT_VIDEO = 3
 }IVYIO_STREAM_TYPE;
 
 typedef enum
@@ -285,8 +293,7 @@ typedef enum
 {
 	IVYIO_CONFIG = 0,
 	IVYIO_UPGRADE = 1,
-	IVYIO_PATCH = 2,
-	IVYIO_IPC_UPGRADE = 4
+	IVYIO_PATCH = 2
 }IVYIO_UPGRADE_TYPE;
 
 typedef enum
@@ -298,6 +305,13 @@ typedef enum
 	IVYIO_UPGRADE_FILE_LEN_ERR      = -19, 
 	IVYIO_UPGRADE_WRITE_FILE_ERR      = -20, 
 }IVYIO_UPGRADE_STATE;
+
+enum
+{
+	IVYIO_LIVE_CALL_VIDEO = 1,
+	IVYIO_LIVE_CALL_AUDIO = 2
+};
+
 
 //
 // struct
@@ -321,9 +335,10 @@ typedef struct _IVYIO_DEVICE_NODE_
 	unsigned short usPort;
 	unsigned short uDHCPEnable;
 	unsigned int uState;
-	char szMac[16];
-	char szUid[32];
-	char szName[32];
+	char szMac[32];
+	char szUid[64];
+	char szName[64];
+    char szDevId[32];
 }ATTRIBUTE_PACKED IVYIO_DEV_NODE, *PIVYIO_DEV_NODE;
 
 
@@ -384,6 +399,13 @@ typedef struct _IVYIO_EVENT_
 	int iLenOfData;
 	unsigned char data[IVYIO_EVENT_DATA_LEN];
 }ATTRIBUTE_PACKED IVYIO_EVENT, *PIVYIO_EVENT;
+
+typedef struct _IVYIO_EVENT2_
+{
+	int id;
+	int iLenOfData;
+	unsigned char *data;
+}ATTRIBUTE_PACKED IVYIO_EVENT2, *PIVYIO_EVENT2;
 
 typedef struct _IVYIO_CONNECT_INFO_
 {
@@ -526,6 +548,12 @@ typedef struct _IVYIO_PLAY_BACK_RESUME_TYPE0_
 	int openPlaybackArgsType;
 }ATTRIBUTE_PACKED IVYIO_PLAY_BACK_RESUME_TYPE0, *PIVYIO_PLAY_BACK_RESUME_TYPE0;
 
+typedef struct _IVYIO_PLAY_BACK_FAST_FORWARD_ARGS_TYPE0_
+{
+	int openPlaybackArgsType; 
+	int value;
+}ATTRIBUTE_PACKED IVYIO_PLAY_BACK_FAST_FORWARD_ARGS_TYPE0, *PIVYIO_PLAY_BACK_FAST_FORWARD_ARGS_TYPE0;
+
 
 // download
 typedef struct _IVYIO_DOWNLOAD_RECORD_
@@ -555,6 +583,12 @@ typedef struct _IVYIO_PICTURE_INFO_
 	unsigned int type; // Picture type, manual/alarm
 }ATTRIBUTE_PACKED IVYIO_PICTURE_INFO, *PIVYIO_PICTURE_INFO;
 
+typedef struct _IVYIO_PICTURE_INFO_EX_
+{
+	int direction;
+	int weight;
+}ATTRIBUTE_PACKED IVYIO_PICTURE_INFO_EX, *PIVYIO_PICTURE_INFO_EX;
+
 
 typedef struct _IVYIO_PICTURE_LIST_
 {
@@ -564,6 +598,14 @@ typedef struct _IVYIO_PICTURE_LIST_
 	IVYIO_PICTURE_INFO list[20];
 }ATTRIBUTE_PACKED IVYIO_PICTURE_LIST, *PIVYIO_PICTURE_LIST;
 
+typedef struct _IVYIO_PICTURE_LIST_EX_
+{
+	int channel;
+	unsigned int totalCount;
+	unsigned int curCount;
+	IVYIO_PICTURE_INFO list[20];
+	IVYIO_PICTURE_INFO_EX listEx[20];
+}ATTRIBUTE_PACKED IVYIO_PICTURE_LIST_EX, *PIVYIO_PICTURE_LIST_EX;
 
 // Multi-picture information to request
 typedef struct _IVYIO_GET_MULTI_PICTURE_
@@ -573,12 +615,20 @@ typedef struct _IVYIO_GET_MULTI_PICTURE_
 	IVYIO_PICTURE_INFO picture[20]; // max size 20
 }ATTRIBUTE_PACKED IVYIO_GET_MULTI_PICTURE, *PIVYIO_GET_MULTI_PICTURE;
 
+typedef struct _IVYIO_GET_MULTI_PICTURE_EX_
+{
+	int sln; // must be 0
+	int countOfUsed; // Can be used picture array count
+	IVYIO_PICTURE_INFO picture[20]; // max size 20
+	IVYIO_PICTURE_INFO_EX pictureEx[20]; // max size 20
+}ATTRIBUTE_PACKED IVYIO_GET_MULTI_PICTURE_EX, *PIVYIO_GET_MULTI_PICTURE_EX;
+
 // Picture data 
 typedef struct _IVYIO_PICTURE_FILE_
 {
 	int channel; // Channel
 	int format; // Picture format, ignore
-	int type; // Picture type, manual/alarm...
+	int type; // ignore
 	unsigned long long time; // Timestamp
 	unsigned int size; // Picture data size
 	char data[0]; // Picture data

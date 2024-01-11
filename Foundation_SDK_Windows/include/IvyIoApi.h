@@ -69,6 +69,18 @@ extern "C" {
 	
 	IVYIO_HANDLE IVYIO_API IVYIO_Create(IVYIO_URL *url, char *szUid, char *szUser, char *szPassword, IVYIO_P2P_MODE mode);
 	
+	// Description: Create SDK instance handle
+	// Parameter: url device url and port
+	// Parameter: szUid device uid, can be NULL
+	// Parameter: szUser device username
+	// Parameter: szPassword device password
+	// Parameter: mode P2P mode
+	// Parameter: lowPower 1: low power device, other: same as IVYIO_Create
+	// Returns: IVYIO_HANDLE handle of SDK
+	// Remark: 
+
+	IVYIO_HANDLE IVYIO_API IVYIO_Create_1(IVYIO_URL *url, char *szUid, char *szUser, char *szPassword, IVYIO_P2P_MODE mode, int lowPower);
+
 	// Description: Destroy SDK instance
 	// Parameter: handle SDK handle
 	// Returns: none
@@ -315,7 +327,19 @@ extern "C" {
 		int *speed,
 		int iChannel);
 
-	
+	// Description: Get video stream, the stream split to two view
+	// Parameter: handle SDK handle
+	// Parameter: data1 The pointer of data, SDK manage memory, caller don't alloc memory
+	// Parameter: iOutLen1 Length of data
+	// Parameter: data2 The pointer of data, SDK manage memory, caller don't alloc memory
+	// Parameter: iOutLen2 Length of data
+	// Parameter: iSpeed Stream speed
+	// Parameter: iDecodeFmt dst decode format, reference IVYIO_DECODE_FMT
+	// Parameter: iChannel Channel No 0 - 31
+	// Returns: IVYIO_RESULT Execution results
+	// Remark: If you call IVYIO_CloseVideo, data you get by this function will be free.
+	IVYIO_RESULT IVYIO_API IVYIO_GetSplitStreamData(IVYIO_HANDLE handle, unsigned char **data1, int *iOutLen1, unsigned char **data2, int *iOutLen2, int *iSpeed, int iDecodeFmt, int iChannel);
+
 	// Description: Set play back stream callback
 	// Parameter: handle SDK handle
 	// Parameter: cb callback function 
@@ -331,6 +355,21 @@ extern "C" {
 		int iDecodeFmt,
 		void *userData);
 	
+	// Description: Get playback video stream, the stream split to two view
+	// Parameter: handle SDK handle
+	// Parameter: data1 The pointer of data, SDK manage memory, caller don't alloc memory
+	// Parameter: iOutLen1 Length of data
+	// Parameter: data2 The pointer of data, SDK manage memory, caller don't alloc memory
+	// Parameter: iOutLen2 Length of data
+	// Parameter: iSpeed Stream speed
+	// Parameter: iDecodeFmt dst decode format, reference IVYIO_DECODE_FMT
+	// Parameter: iChannel Channel No 0 - 31
+	// Returns: IVYIO_RESULT Execution results
+	// Remark: If you call IVYIO_CloseVideo, data you get by this function will be free.
+	IVYIO_RESULT IVYIO_API IVYIO_GetPlaybackSplitStreamData(IVYIO_HANDLE handle, unsigned char **data1, int *iOutLen1, unsigned char **data2, int *iOutLen2, int *iSpeed, int iDecodeFmt, int iChannel);
+
+
+
 	// Description: Get playback video(decode) or audio stream
 	// Parameter: handle SDK handle
 	// Parameter: stream Stream type
@@ -452,6 +491,15 @@ extern "C" {
 	// Remark: You must get all event, or else event will hold memory; you got one event, a memory of event will be free
 	
 	IVYIO_RESULT IVYIO_API IVYIO_GetEvent(IVYIO_HANDLE handle, IVYIO_EVENT *event);
+
+	// Description: Get event, only support IVY device
+	// Parameter: handle SDK handle
+	// Parameter: event Event id and data format It define by this sdk user and embedded sdk user
+	// Returns: IVYIO_RESULT Execution results
+	// Remark: You must get all event, or else event will hold memory; you got one event, a memory of event will be free.
+	// buffer of event->data provide by caller.
+
+	IVYIO_RESULT IVYIO_API IVYIO_GetEvent2(IVYIO_HANDLE handle, IVYIO_EVENT2 *event);
 	
 	// Description: Set event callback
 	// Parameter: handle SDK handle
@@ -527,10 +575,11 @@ extern "C" {
 	// Parameter: state Upgrade state, reference IVYIO_UPGRADE_STATE.
 	// Parameter: timeout timeout
 	// Returns: IVYIO_RESULT Execution results
-	// Remark: If device is NVR or IPC, channel is ignore. If device is NVR's channel, bit0 is channel1 ,bit1 is channel2......
+	// Remark: If device is NVR or IPC, channel is zero. If device is NVR's channel, bit0 is channel1 ,bit1 is channel2......
 	//			Only one channel on NVR can be upgraded at a time.
 
 	IVYIO_RESULT IVYIO_API IVYIO_Upgrade(IVYIO_HANDLE handle, const char *path, int type, int channel, int *state, int timeout);
+	IVYIO_RESULT IVYIO_API IVYIO_UpgradeEx(IVYIO_HANDLE handle, const char *path, int type, int channel, int *state, int timeout, int sleepMs);
 
 	// Description: Set SDK flag to free buffer when call ClosePlayback
 	// Parameter: handle SDK handle
@@ -617,6 +666,71 @@ extern "C" {
 	// Returns: IVYIO_RESULT Execution results
 	// Remark: files param memory support by caller. Timeout must be more than 50 * 20 ms
 	IVYIO_RESULT IVYIO_API IVYIO_GetPicture(IVYIO_HANDLE handle, void *args, void *files[20], int *fileCount, int iTimeout, int iChannel);
+
+	// Description: tell ipc we will start send video
+	// Parameter: handle SDK handle
+	// Parameter: op bit0 video bit1 audio
+	// Parameter: iTimeout Unit is ms
+	// Returns: IVYIO_RESULT Execution results
+	IVYIO_RESULT IVYIO_API IVYIO_OpenSendLive(IVYIO_HANDLE handle, int op, int timeout);
+
+	// Description: tell ipc we will stop send video
+	// Parameter: handle SDK handle
+	// Parameter: op bit0 video bit1 audio
+	// Parameter: iTimeout Unit is ms
+	// Returns: IVYIO_RESULT Execution results
+	IVYIO_RESULT IVYIO_API IVYIO_CloseSendLive(IVYIO_HANDLE handle, int op, int timeout);
+
+
+	// Description: send video to ipc
+	// Parameter: handle SDK handle
+	// Parameter: frame buffer for IVYIO_FRAME 
+	// Parameter: len buffer size
+	// Returns: IVYIO_RESULT Execution results
+	IVYIO_RESULT IVYIO_API IVYIO_SendVideo(IVYIO_HANDLE handle, char *frame, int len);
+
+	// Description: send audio to ipc
+	// Parameter: handle SDK handle
+	// Parameter: frame buffer for IVYIO_FRAME 
+	// Parameter: len buffer size
+	// Returns: IVYIO_RESULT Execution results
+	IVYIO_RESULT IVYIO_API IVYIO_SendAudio(IVYIO_HANDLE handle, char *frame, int len);
+
+	// Description: reject video call
+	// Parameter: handle SDK handle
+	// Parameter: timeout timeout 
+	// Returns: IVYIO_RESULT Execution results
+	IVYIO_RESULT IVYIO_API IVYIO_RejectVideoCall(IVYIO_HANDLE handle, int timeout);
+
+	// Description: get video call state
+	// Parameter: handle SDK handle
+	// Parameter: state 0:idle  1:calling  2:busy
+	// Parameter: timeout timeout 
+	// Returns: IVYIO_RESULT Execution results
+	IVYIO_RESULT IVYIO_API IVYIO_GetVideoCallState(IVYIO_HANDLE handle, int *state, int timeout);
+
+	// Description: scale NV12 resolution
+	// Parameter: handle SDK handle
+	// Parameter: srcBuf NV12 data
+	// Parameter: srcSize NV12 data size
+	// Parameter: srcW src width
+	// Parameter: srcH src height 
+	// Parameter: dstW dst width
+	// Parameter: dstH dst height
+	// Parameter: dstBuf dst NV12 buffer
+	// Parameter: dstSize dst NV12 data size
+	// Returns: IVYIO_RESULT Execution results
+	IVYIO_RESULT IVYIO_API IVYIO_ScaleYUV(IVYIO_HANDLE handle, unsigned char *srcBuf, int srcSize, int srcW, int srcH, int dstW, int dstH, unsigned char **dstBuf, int *dstSize);
+
+	// Description: decode playback video
+	// Parameter: handle SDK handle
+	// Parameter: srcFrame The pointer of IVYIO_FRAME 
+	// Parameter: dstFrame The dst frame
+	// Parameter: dstFrameSize dst decode frame size
+	// Parameter: dstDecodeFmt dst decode format
+	// Parameter: channel channel
+	// Returns: IVYIO_RESULT Execution results
+	IVYIO_RESULT IVYIO_API IVYIO_DecodePlaybackVideo(IVYIO_HANDLE handle, unsigned char *srcFrame, unsigned char **dstFrame, int *dstFrameSize, int dstDecodeFmt, int channel);
 
 #ifdef __cplusplus
 }

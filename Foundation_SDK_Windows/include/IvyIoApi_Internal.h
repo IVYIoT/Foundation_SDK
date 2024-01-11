@@ -56,6 +56,21 @@ extern "C" {
 
     IVYIO_HANDLE IVYIO_API IVYIO_CreateEx_2(IVYIO_URL *url, char *szUid, char *szMac, char *szUser, char *szPassword, IVYIO_P2P_MODE mode, IVYIO_P2P_MODE doorbellMode, int devType, int streamType);
 
+	// Description: Create SDK instance handle
+	// Parameter: url Url and port
+	// Parameter: szUid Device uid, SDK distinguish Ivy device and Foscam device by uid, if uid is null or length is invalid, sdk dependece devType
+	// Parameter: szMac Device mac
+	// Parameter: szUser Device name
+	// Parameter: szPassword Device password
+	// Parameter: mode P2P mode
+	// Parameter: doorbellMode doorbell P2P mode
+	// Parameter: devType Foscam device type reference IVYIO_DEV_TYPE
+	// Parameter: streamType Foscam IPC streamType 0:main 1:sub, If it's not FoscamIPC, ignore this param.
+	// Returns: IVYIO_HANDLE Execution results
+	// Remark: Only Foscam app or Doorbell use this function
+
+	IVYIO_HANDLE IVYIO_API IVYIO_CreateEx_3(IVYIO_URL *url, char *szUid, char *szMac, char *szUser, char *szPassword, IVYIO_P2P_MODE mode, IVYIO_P2P_MODE doorbellMode, int devType, int streamType);
+
 	// Description: Get model No
 	// Parameter: handle SDK handle
 	// Parameter: iModel Foscam device model No.
@@ -71,6 +86,12 @@ extern "C" {
 	// Remark: 
 	
 	int IVYIO_API IVYIO_DevSdkVer(IVYIO_HANDLE handle);
+
+	// Description: Get device type by UID
+	// Parameter: handle SDK handle
+	// Returns: int Ivy device or Foscam device. 0: ivy  1: foscam
+	// Remark: 
+	int IVYIO_API IVYIO_GetDeviceUidType(char *uid);
 	
 	// Description: Convert ts to mp4
 	// Parameter: szSrcPath TS file path
@@ -150,6 +171,23 @@ extern "C" {
 	// Remark: 
 	
 	IVYIO_RESULT IVYIO_API IVYIO_SetFoscamDispatchServer(IVYIO_HANDLE handle, char *svr);
+
+	// Description: Get current turn server info if login successful
+	// Parameter: handle SDK handle
+	// Parameter: turn Turn Server info
+	// Returns: none
+	// Remark: Please call it after login successful
+
+	void IVYIO_API IVYIO_GetCurTurnServer(IVYIO_HANDLE handle, IVYIO_TURN_INFO *turn);
+
+	// Description: Set turn server for SDK, SDK will skip dispatch server and use it to connect device 
+	// Parameter: handle SDK handle
+	// Parameter: turn Turn Server info
+	// Returns: VYIO_RESULT Execution results
+	// Remark: Please call it after Create api and before login api.If turn is NULL or invalid SDK will do query dispatch server get turn server info internal.
+	//		   Please don't call this api when SDK is in logining state
+
+	IVYIO_RESULT IVYIO_API IVYIO_UseTurnServer(IVYIO_HANDLE handle, IVYIO_TURN_INFO *turn);
     
     // Description: Set a path to sdk
     // Parameter: handle SDK handle
@@ -224,6 +262,12 @@ extern "C" {
     // Remark: Detect state by sending udp
     int IVYIO_API IVYIO_ProbeLocalNetworkState();
 
+	// Description: Reset the local network state to init state. We should only use it on iOS
+	// Returns: IVYIO_RESULT Execution result
+	// Remark: Once SDK send udp out success, sdk set local network state is ok and never change this state.
+	// we need use this api to reset state, for example, we manaul disable local network in ios. 
+	IVYIO_RESULT IVYIO_API IVYIO_ResetLocalNetworkState();
+
 
 	// Description: Download Foscam NVR record
 	// Parameter: handle SDK handle
@@ -240,6 +284,77 @@ extern "C" {
 	// Returns: IVYIO_RESULT Execution results 
 	// Remark: None
 	IVYIO_RESULT IVYIO_API IVYIO_DownloadFosNVRCancel(IVYIO_HANDLE handle);
+
+	// Description: Upgrade a audio file to device
+	// Parameter: handle SDK handle
+	// Parameter: path The path of audio file
+	// Parameter: state 0: success -2: file check error -1: other error
+	// Parameter: timeout tim eout
+	// Returns: IVYIO_RESULT Execution results 
+	// Remark: None
+	IVYIO_RESULT IVYIO_API IVYIO_UpgradeAudioFile(IVYIO_HANDLE handle, const char *path, int *state, int timeout);
+
+
+	// Description: Close play back
+	// Parameter: handle SDK handle
+	// Parameter: args Same as IVYIO_ClosePlayback
+	// Parameter: iTimeout Same as IVYIO_ClosePlayback
+	// Parameter: iChannel Same as IVYIO_ClosePlayback 
+	// Parameter: free 0: API don't free playback memory buffer, 1: free playback memory buffer
+	// Returns: IVYIO_RESULT Execution results 
+	// Remark: If free is 0, we need call IVYIO_ManualFreePlaybackMemory to free playback memory
+	IVYIO_RESULT IVYIO_API IVYIO_ClosePlaybackEx(IVYIO_HANDLE handle, void *args, int iTimeout, int iChannel, int free);
+
+	// Description: Free playback memory
+	// Parameter: handle SDK handle
+	// Parameter: iChannel Channel
+	// Returns: IVYIO_RESULT Execution results 
+	// Remark: It only works Foscam IPC / NVR / BPI 
+	IVYIO_RESULT IVYIO_API IVYIO_ManualFreePlaybackMemory(IVYIO_HANDLE handle, int iChannel);
+
+	// Description: Playback using one channel to communication, it's only for foscam ipc(foscam uid / support sync command)
+	// Parameter: handle SDK handle
+	// Parameter: bEnable enable
+	// Returns: None
+	// Remark: It only works Foscam IPC 
+	IVYIO_RESULT IVYIO_API IVYIO_EnableChannel4Playback(IVYIO_HANDLE handle, bool bEnable);
+
+	// Description: Check api call time's up
+	// Parameter: handle SDK handle
+	// Parameter: state 1: time's up 0: no
+	// Returns: IVYIO_RESULT Execution results 
+	// Remark: If call API create_1 and parameter lowPower is 1, this function is enable
+	IVYIO_RESULT IVYIO_API IVYIO_ApiCallTimeIsUp(IVYIO_HANDLE handle, int *state);
+
+	// Description: Tell SDK vendor name, SDK wil change video stream param to fit vendor feature
+	// Parameter: name vendor name
+	// Returns: IVYIO_RESULT Execution results 
+	// Remark: Please call it before create handle
+	IVYIO_RESULT IVYIO_API IVYIO_SetAppPackageName(const char *name);
+
+	// Description: set dispatch server location type, when uid[22] is '3' and devcie is IVY, this function is enable
+	// Parameter: handle The SDK handle
+	// Parameter: location The location type(0: china 1: foreign)
+	// Returns: IVYIO_RESULT Execution results 
+	IVYIO_RESULT IVYIO_API IVYIO_SetDispatchLocationType(IVYIO_HANDLE handle, int location);
+
+	// Description: Clean SDK's live buffer(video/audio)
+	// Parameter: handle The SDK handle
+	// Parameter: iChannel bit0-bit31 indicate channel0-channel31
+	// Returns: IVYIO_RESULT Execution results 
+	IVYIO_RESULT IVYIO_API IVYIO_CleanLiveBuffer(IVYIO_HANDLE handle, int iChannel);
+
+	// Description: Alloc SDK's live buffer(video/audio)
+	// Parameter: handle The SDK handle
+	// Parameter: iChannel bit0-bit31 indicate channel0-channel31
+	// Returns: IVYIO_RESULT Execution results 
+	IVYIO_RESULT IVYIO_API IVYIO_ManualAllocLiveMemory(IVYIO_HANDLE handle, int iChannel);
+
+	// Description: Free SDK's live buffer(video/audio)
+	// Parameter: handle The SDK handle
+	// Parameter: iChannel bit0-bit31 indicate channel0-channel31
+	// Returns: IVYIO_RESULT Execution results 
+	IVYIO_RESULT IVYIO_API IVYIO_ManualFreeLiveMemory(IVYIO_HANDLE handle, int iChannel);
 
 	// Description: Doolbell open video
 	// Parameter: handle SDK handle
@@ -362,6 +477,81 @@ extern "C" {
 
     void IVYIO_API IVYIO_DoorBell_SetOpenTalkFlag(IVYIO_HANDLE handle, int flag);
 
+	// Description: Query doorbell answer state
+	// Parameter: handle SDK handle
+	// Parameter: state 2: no answer 0:answered already
+	// Parameter: iTimeout timeout
+	// Returns: None
+	// Remark:
+
+	IVYIO_RESULT IVYIO_API IVYIO_DoorBell_QueryAnswerState(IVYIO_HANDLE handle, int *state, int iTimeout);
+
+	IVYIO_RESULT IVYIO_API IVYIO_DoorBell_HangUp(IVYIO_HANDLE handle, int iTimeout);
+
+
+	// Description: base32 encode
+	// Parameter: in the input buffer data
+	// Parameter: inOfLen the input buffer data length
+	// Parameter: out the output buffer
+	// Parameter: outOfLen it's output buffer data size as input, the actual output data length as output
+	// Parameter: dropChar the drop char
+	// Returns: 0, success 1, fail
+	int IVYIO_API IVYIO_Base32Encode(unsigned char *in, int inOfLen, char *out, int *outOfLen, char dropChar);
+
+	int IVYIO_API IVYIO_Fireman(const char *i, const int pt, const char *n, int timeout);
+	// Description: get real handle for sdk use; This is just for debug
+	// Parameter: handle The handle that app use
+	// Returns: Real handle for sdk
+	int IVYIO_API IVYIO_MapHandle(IVYIO_HANDLE handle);
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	// RTSP thread-unsafe api
+	//  
+	/////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	// Description: Create a rtsp instance and open url
+	// Parameter: url rtsp url
+	// Returns: rtsp instance and opened, or NULL
+
+	void * IVYIO_API IVYIO_RTSP_Open(const char *url);
+
+	// Description: Close a rtsp and delete rtsp instance
+	// Parameter: inst rtsp instance
+	// Returns: inst is not null will return 0, or return 1
+
+	int IVYIO_API IVYIO_RTSP_Close(void *inst);
+
+	// Description: Read frame, frame is not decoded
+	// Parameter: inst rtsp instance
+	// Parameter: frame The pointer of char
+	// Parameter: frameSize The actual frame size
+	// Parameter: audioOr Video frame data type, 0: video 1: audio
+	// Returns: success 0, fail 1
+
+	int IVYIO_API IVYIO_RTSP_GetRawFrame(void *inst, unsigned char **frame, int *frameSize, IVYIO_RTSP_VIDEO_INFO *videoinfo, IVYIO_RTSP_AUDIO_INFO *audioInfo, int *audioOrVideo);
+
+	// Description: Read frame, video frame is raw data, audio data is pcm
+	// Parameter: inst rtsp instance
+	// Parameter: frame The pointer of char
+	// Parameter: frameSize The actual frame size
+	// Parameter: audioOr Video frame data type, 0: video 1: audio
+	// Returns: success 0, fail 1
+
+	int IVYIO_API IVYIO_RTSP_GetRawFrameAndPCM(void *inst, unsigned char **frame, int *frameSize, IVYIO_RTSP_VIDEO_INFO *videoinfo, IVYIO_RTSP_AUDIO_INFO *audioInfo, int *audioOrVideo);
+
+	// Description: Read frame, frame is not decoded
+	// Parameter: inst rtsp instance
+	// Parameter: frame The pointer of char
+	// Parameter: frameSize The actual frame size
+	// Parameter: audioOr Video frame data type, 0: video 1: audio
+	// Returns: success 0, fail 1
+
+	int IVYIO_API IVYIO_RTSP_GetFrame(void *inst, unsigned char **frame, int *frameSize, IVYIO_RTSP_VIDEO_INFO *videoinfo, IVYIO_RTSP_AUDIO_INFO *audioInfo, int *audioOrVideo, int videoDecodeFmt);
+
+
+	
 #ifdef __cplusplus
 }
 #endif
